@@ -8,21 +8,48 @@ final class MWS_Registry {
 	private $config;
 	private $validator;
 	private $remote_source;
+	private $hub;
 
-	public function __construct(MWS_Config $config, MWS_Validator $validator, MWS_Remote_Source $remote_source) {
+	public function __construct(MWS_Config $config, MWS_Validator $validator, MWS_Remote_Source $remote_source, MWS_Hub $hub) {
 		$this->config        = $config;
 		$this->validator     = $validator;
 		$this->remote_source = $remote_source;
+		$this->hub           = $hub;
 	}
 
 	public function get_sites($force_refresh = false) {
+		$settings = $this->config->get_settings();
+
+		if (! empty($settings['hub_mode_enabled'])) {
+			$admin_sites = $this->get_admin_sites();
+
+			if (! is_wp_error($admin_sites) && ! empty($admin_sites)) {
+				return $admin_sites;
+			}
+		}
+
+		if (empty($settings['hub_mode_enabled']) && ! empty($settings['hub_url'])) {
+			$hub_sites = $this->remote_source->get_sites($this->hub->get_sites_endpoint_url($settings['hub_url']), $force_refresh);
+
+			if (! is_wp_error($hub_sites)) {
+				return $hub_sites;
+			}
+
+			MWS_Logger::log(
+				'hub_source_fallback',
+				array(
+					'error' => $hub_sites->get_error_message(),
+					'url'   => $settings['hub_url'],
+				),
+				'warning'
+			);
+		}
+
 		$admin_sites = $this->get_admin_sites();
 
 		if (! is_wp_error($admin_sites) && ! empty($admin_sites)) {
 			return $admin_sites;
 		}
-
-		$settings = $this->config->get_settings();
 
 		if (! empty($settings['use_remote_source']) && ! empty($settings['remote_source_url'])) {
 			$remote_sites = $this->remote_source->get_sites($settings['remote_source_url'], $force_refresh);

@@ -10,6 +10,11 @@
 	border-radius: 12px;
 }
 
+.mws-admin__card--setup {
+	border-color: #d86f2d;
+	background: linear-gradient(180deg, #fffaf5, #ffffff);
+}
+
 .mws-admin__preview {
 	padding: 16px;
 	border-radius: 12px;
@@ -53,4 +58,18 @@
 
 .mws-admin__site-row input {
 	width: 100%;
+}
+
+.mws-admin__setup-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 16px;
+	margin-top: 16px;
+}
+
+.mws-admin__setup-panel {
+	padding: 20px;
+	border: 1px solid #ead9cb;
+	border-radius: 10px;
+	background: #fff;
 }

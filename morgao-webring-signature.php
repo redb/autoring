@@ -30,6 +30,7 @@ $mws_includes = array(
 	'includes/class-mws-rate-limiter.php',
 	'includes/class-mws-installer.php',
 	'includes/class-mws-github-updater.php',
+	'includes/class-mws-hub.php',
 	'includes/class-mws-remote-source.php',
 	'includes/class-mws-registry.php',
 	'includes/class-mws-site-status.php',

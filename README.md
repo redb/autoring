@@ -5,7 +5,7 @@ Minimal WordPress plugin to connect a family of sites through a shared footer si
 ## Positioning
 
 - simple, durable, low-friction webring for independent sites
-- footer-ready snippet for `Divi > Theme Options > Edit Footer Credits`
+- footer-ready snippet for WordPress themes and page builders
 - admin-managed ring sites
 - GitHub Release updates
 - cached availability status on the directory page
@@ -14,6 +14,7 @@ Minimal WordPress plugin to connect a family of sites through a shared footer si
 
 - generates a minimal signature with `Previous`, `Index`, `Next`, and `Random`
 - manages sites directly from WordPress admin
+- supports a master site plus client sites that join the same ring
 - renders a public directory page with green/red live status dots
 - supports an optional `Give` CTA on the directory page
 - falls back safely if remote data or external checks fail
@@ -32,8 +33,16 @@ Minimal WordPress plugin to connect a family of sites through a shared footer si
 1. Upload the folder `morgao-webring-signature` to `wp-content/plugins/`
 2. Activate `Morgao AutoRing`
 3. Open `Settings > Morgao AutoRing`
-4. Add your ring sites in the plugin admin
-5. Copy the generated snippet into `Divi > Theme Options > Edit Footer Credits`
+4. On first launch, choose:
+   - `Make This Site The Master`
+   - or `Connect To An Existing Master`
+5. If this site is the master, manage the shared ring sites here
+6. If this site is a client, enter the master site URL and let the plugin register automatically
+7. Copy the generated snippet into your theme, footer builder, or custom footer credits area
+
+Divi note:
+
+- works well in `Divi > Theme Options > Edit Footer Credits`
 
 ## GitHub Install And Updates
 
@@ -54,6 +63,25 @@ Automatic GitHub updates require:
 - a release tag/version greater than the installed version
 
 For private repositories, define `MWS_GITHUB_TOKEN` in `wp-config.php`.
+
+## Master And Client Mode
+
+The plugin is designed to connect multiple WordPress sites into one shared ring.
+
+- the first site can act as the master by default
+- the master exposes the shared site registry and accepts registrations
+- other sites install the plugin and choose `Connect To An Existing Master`
+- client sites read the master registry with cache and keep a local fallback
+
+Master site shares:
+
+- its base URL
+- optionally a shared secret for registration protection
+
+Client site needs:
+
+- the master site base URL
+- the shared secret only if the master requires one
 
 ## Monetization
 

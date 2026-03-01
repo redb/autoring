@@ -27,6 +27,14 @@ final class MWS_Config {
 		return (string) $this->get('sites_option_name');
 	}
 
+	public function get_setup_option_name() {
+		return (string) $this->get('setup_option_name');
+	}
+
+	public function get_activation_redirect_key() {
+		return (string) $this->get('activation_redirect_key');
+	}
+
 	public function get_default_settings() {
 		return array(
 			'current_site_id'    => '',
@@ -34,6 +42,11 @@ final class MWS_Config {
 			'remote_source_url'  => '',
 			'accent_color'       => (string) $this->get('accent_color'),
 			'open_in_new_tab'    => (bool) $this->get('open_in_new_tab'),
+			'hub_mode_enabled'   => false,
+			'hub_allow_registrations' => true,
+			'hub_url'            => '',
+			'hub_secret'         => '',
+			'hub_auto_register'  => false,
 			'use_github_updates' => false,
 			'github_repository'  => 'redb/Webring',
 			'github_asset_name'  => MWS_PLUGIN_SLUG . '.zip',
@@ -55,6 +68,14 @@ final class MWS_Config {
 
 		if (defined('MWS_REMOTE_SOURCE_URL') && is_string(MWS_REMOTE_SOURCE_URL)) {
 			$settings['remote_source_url'] = MWS_REMOTE_SOURCE_URL;
+		}
+
+		if (defined('MWS_HUB_URL') && is_string(MWS_HUB_URL)) {
+			$settings['hub_url'] = trim(MWS_HUB_URL);
+		}
+
+		if (defined('MWS_HUB_SECRET') && is_string(MWS_HUB_SECRET)) {
+			$settings['hub_secret'] = trim(MWS_HUB_SECRET);
 		}
 
 		if (defined('MWS_GITHUB_UPDATES_ENABLED')) {
@@ -82,5 +103,9 @@ final class MWS_Config {
 
 	public function get_github_api_base_url() {
 		return rtrim((string) $this->get('github_api_base_url'), '/');
+	}
+
+	public function get_hub_registration_cache_key($hub_url, $site_url) {
+		return (string) $this->get('hub_registration_key') . md5((string) $hub_url . '|' . (string) $site_url);
 	}
 }

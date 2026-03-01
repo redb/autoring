@@ -12,6 +12,7 @@ final class MWS_Plugin {
 	private $installer;
 	private $site_status;
 	private $github_updater;
+	private $hub;
 
 	public static function boot() {
 		$defaults      = include MWS_PLUGIN_DIR . 'config/defaults.php';
@@ -19,13 +20,14 @@ final class MWS_Plugin {
 		$validator     = new MWS_Validator();
 		$installer     = new MWS_Installer($config, $validator);
 		$github_updater = new MWS_GitHub_Updater($config);
+		$hub           = new MWS_Hub($config, $validator);
 		$remote_source = new MWS_Remote_Source($config, $validator);
-		$registry      = new MWS_Registry($config, $validator, $remote_source);
+		$registry      = new MWS_Registry($config, $validator, $remote_source, $hub);
 		$site_status   = new MWS_Site_Status($config);
 		$renderer      = new MWS_Renderer($config, $registry, $site_status);
 		$rate_limiter  = new MWS_Rate_Limiter();
-		$admin         = new MWS_Admin($config, $validator, $registry, $renderer, $rate_limiter, $site_status);
-		$plugin        = new self($config, $registry, $renderer, $admin, $installer, $site_status, $github_updater);
+		$admin         = new MWS_Admin($config, $validator, $registry, $renderer, $rate_limiter, $site_status, $hub);
+		$plugin        = new self($config, $registry, $renderer, $admin, $installer, $site_status, $github_updater, $hub);
 
 		$plugin->register();
 	}
@@ -51,7 +53,7 @@ final class MWS_Plugin {
 		}
 	}
 
-	public function __construct(MWS_Config $config, MWS_Registry $registry, MWS_Renderer $renderer, MWS_Admin $admin, MWS_Installer $installer, MWS_Site_Status $site_status, MWS_GitHub_Updater $github_updater) {
+	public function __construct(MWS_Config $config, MWS_Registry $registry, MWS_Renderer $renderer, MWS_Admin $admin, MWS_Installer $installer, MWS_Site_Status $site_status, MWS_GitHub_Updater $github_updater, MWS_Hub $hub) {
 		$this->config    = $config;
 		$this->registry  = $registry;
 		$this->renderer  = $renderer;
@@ -59,6 +61,7 @@ final class MWS_Plugin {
 		$this->installer = $installer;
 		$this->site_status = $site_status;
 		$this->github_updater = $github_updater;
+		$this->hub = $hub;
 	}
 
 	public function register() {
@@ -67,7 +70,10 @@ final class MWS_Plugin {
 		add_filter('plugins_api', array($this, 'provide_github_plugin_info'), 10, 3);
 		add_filter('http_request_args', array($this, 'filter_http_request_args'), 10, 2);
 		add_filter('plugin_row_meta', array($this, 'add_plugin_row_meta'), 10, 2);
+		add_action('admin_init', array($this, 'maybe_redirect_to_setup'));
+		add_action('admin_init', array($this, 'maybe_auto_register_with_hub'));
 		add_action('plugins_loaded', array($this, 'maybe_upgrade'));
+		add_action('rest_api_init', array($this, 'register_hub_routes'));
 		add_action($this->config->get('status_cron_hook'), array($this, 'refresh_site_statuses'));
 		add_action('init', array($this, 'register_shortcode'));
 		add_action('wp_enqueue_scripts', array($this, 'enqueue_frontend_assets'));
@@ -85,6 +91,37 @@ final class MWS_Plugin {
 	public function maybe_upgrade() {
 		$this->installer->upgrade_if_needed();
 		self::ensure_cron_schedule($this->config);
+	}
+
+	public function maybe_redirect_to_setup() {
+		if (! current_user_can('manage_options')) {
+			return;
+		}
+
+		if (! get_transient($this->config->get_activation_redirect_key())) {
+			return;
+		}
+
+		delete_transient($this->config->get_activation_redirect_key());
+
+		if (wp_doing_ajax()) {
+			return;
+		}
+
+		wp_safe_redirect(admin_url('options-general.php?page=morgao-webring-signature&mws_setup=1'));
+		exit;
+	}
+
+	public function maybe_auto_register_with_hub() {
+		if (! is_admin()) {
+			return;
+		}
+
+		$this->hub->maybe_register_current_site(false);
+	}
+
+	public function register_hub_routes() {
+		$this->hub->register_routes();
 	}
 
 	public function inject_github_update($transient) {

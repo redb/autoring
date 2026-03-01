@@ -14,6 +14,11 @@ final class MWS_Validator {
 		$remote_url      = isset($input['remote_source_url']) ? trim((string) $input['remote_source_url']) : '';
 		$accent_color    = sanitize_hex_color($input['accent_color'] ?? $defaults['accent_color']);
 		$open_in_new_tab = ! empty($input['open_in_new_tab']);
+		$hub_mode_enabled = ! empty($input['hub_mode_enabled']);
+		$hub_allow_registrations = ! empty($input['hub_allow_registrations']);
+		$hub_url         = isset($input['hub_url']) ? trim((string) $input['hub_url']) : '';
+		$hub_secret      = isset($input['hub_secret']) ? trim((string) $input['hub_secret']) : '';
+		$hub_auto_register = ! empty($input['hub_auto_register']);
 		$github_updates  = ! empty($input['use_github_updates']);
 		$github_repo     = isset($input['github_repository']) ? trim((string) $input['github_repository']) : '';
 		$github_asset    = isset($input['github_asset_name']) ? trim((string) $input['github_asset_name']) : $defaults['github_asset_name'];
@@ -39,6 +44,27 @@ final class MWS_Validator {
 		if ($remote_source && $remote_url === '') {
 			$remote_source = false;
 			add_settings_error($config->get_option_name(), 'mws_missing_remote_url', __('Remote source was disabled because no valid URL was provided.', 'morgao-webring-signature'));
+		}
+
+		if ($hub_mode_enabled && $hub_url === '') {
+			$hub_url = home_url('/');
+		}
+
+		if ($hub_url !== '') {
+			$hub_url = esc_url_raw($hub_url);
+			$parsed  = wp_parse_url($hub_url);
+
+			if (! $parsed || empty($parsed['scheme']) || ! in_array($parsed['scheme'], array('http', 'https'), true)) {
+				$hub_url = '';
+				add_settings_error($config->get_option_name(), 'mws_invalid_hub_url', __('Hub URL must be a valid HTTP or HTTPS URL.', 'morgao-webring-signature'));
+			}
+		}
+
+		$hub_secret = sanitize_text_field($hub_secret);
+
+		if ($hub_auto_register && $hub_url === '') {
+			$hub_auto_register = false;
+			add_settings_error($config->get_option_name(), 'mws_missing_hub_url', __('Auto-registration was disabled because no valid hub URL was provided.', 'morgao-webring-signature'));
 		}
 
 		if ($github_repo !== '') {
@@ -87,6 +113,11 @@ final class MWS_Validator {
 			'remote_source_url' => $remote_url,
 			'accent_color'      => $accent_color,
 			'open_in_new_tab'   => $open_in_new_tab,
+			'hub_mode_enabled'  => $hub_mode_enabled,
+			'hub_allow_registrations' => $hub_allow_registrations,
+			'hub_url'           => $hub_url,
+			'hub_secret'        => $hub_secret,
+			'hub_auto_register' => $hub_auto_register,
 			'use_github_updates'=> $github_updates,
 			'github_repository' => $github_repo,
 			'github_asset_name' => $github_asset,

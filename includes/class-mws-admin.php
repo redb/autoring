@@ -11,21 +11,25 @@ final class MWS_Admin {
 	private $renderer;
 	private $rate_limiter;
 	private $site_status;
+	private $hub;
 
-	public function __construct(MWS_Config $config, MWS_Validator $validator, MWS_Registry $registry, MWS_Renderer $renderer, MWS_Rate_Limiter $rate_limiter, MWS_Site_Status $site_status) {
+	public function __construct(MWS_Config $config, MWS_Validator $validator, MWS_Registry $registry, MWS_Renderer $renderer, MWS_Rate_Limiter $rate_limiter, MWS_Site_Status $site_status, MWS_Hub $hub) {
 		$this->config       = $config;
 		$this->validator    = $validator;
 		$this->registry     = $registry;
 		$this->renderer     = $renderer;
 		$this->rate_limiter = $rate_limiter;
 		$this->site_status  = $site_status;
+		$this->hub          = $hub;
 	}
 
 	public function register() {
 		add_action('admin_menu', array($this, 'add_menu'));
 		add_action('admin_init', array($this, 'register_settings'));
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
+		add_action('admin_post_mws_complete_setup', array($this, 'handle_complete_setup'));
 		add_action('admin_post_mws_save_sites', array($this, 'handle_save_sites'));
+		add_action('admin_post_mws_register_with_hub', array($this, 'handle_register_with_hub'));
 		add_action('admin_post_mws_refresh_site_statuses', array($this, 'handle_refresh_site_statuses'));
 		add_action('admin_post_mws_refresh_remote_sites', array($this, 'handle_refresh_remote_sites'));
 	}
@@ -83,6 +87,30 @@ final class MWS_Admin {
 		);
 
 		add_settings_field(
+			'hub_mode_enabled',
+			__('Ring role', 'morgao-webring-signature'),
+			array($this, 'render_hub_role_field'),
+			'morgao-webring-signature',
+			'mws_main_section'
+		);
+
+		add_settings_field(
+			'hub_url',
+			__('Master site URL', 'morgao-webring-signature'),
+			array($this, 'render_hub_url_field'),
+			'morgao-webring-signature',
+			'mws_main_section'
+		);
+
+		add_settings_field(
+			'hub_secret',
+			__('Hub secret', 'morgao-webring-signature'),
+			array($this, 'render_hub_secret_field'),
+			'morgao-webring-signature',
+			'mws_main_section'
+		);
+
+		add_settings_field(
 			'use_remote_source',
 			__('Remote registry', 'morgao-webring-signature'),
 			array($this, 'render_remote_source_field'),
@@ -119,6 +147,57 @@ final class MWS_Admin {
 		wp_enqueue_style('mws-signature', MWS_PLUGIN_URL . 'assets/css/mws-signature.css', array(), MWS_PLUGIN_VERSION);
 		wp_enqueue_style('mws-admin', MWS_PLUGIN_URL . 'assets/css/mws-admin.css', array(), MWS_PLUGIN_VERSION);
 		wp_enqueue_script('mws-admin', MWS_PLUGIN_URL . 'assets/js/mws-admin.js', array(), MWS_PLUGIN_VERSION, true);
+	}
+
+	public function handle_complete_setup() {
+		if (! current_user_can('manage_options')) {
+			wp_die(esc_html__('You are not allowed to do that.', 'morgao-webring-signature'));
+		}
+
+		check_admin_referer('mws_complete_setup');
+
+		if (! $this->rate_limiter->allow('admin_complete_setup', (int) $this->config->get('rate_limit_max_attempts'), (int) $this->config->get('rate_limit_window'))) {
+			$this->redirect_with_notice('rate_limited');
+		}
+
+		$current = $this->config->get_settings();
+		$role    = isset($_POST['mws_role']) ? sanitize_key(wp_unslash($_POST['mws_role'])) : 'master';
+		$input   = $current;
+
+		if ($role === 'client') {
+			$input['hub_mode_enabled']        = false;
+			$input['hub_allow_registrations'] = false;
+			$input['hub_url']                 = isset($_POST['hub_url']) ? trim((string) wp_unslash($_POST['hub_url'])) : '';
+			$input['hub_secret']              = isset($_POST['hub_secret']) ? trim((string) wp_unslash($_POST['hub_secret'])) : '';
+			$input['hub_auto_register']       = true;
+		} else {
+			$input['hub_mode_enabled']        = true;
+			$input['hub_allow_registrations'] = true;
+			$input['hub_url']                 = untrailingslashit(home_url('/'));
+			$input['hub_secret']              = isset($_POST['hub_secret']) ? trim((string) wp_unslash($_POST['hub_secret'])) : '';
+			$input['hub_auto_register']       = false;
+		}
+
+		$validated = $this->validator->validate_settings($input, $this->config);
+		update_option($this->config->get_option_name(), $validated, false);
+
+		if ($role === 'client' && empty($validated['hub_url'])) {
+			update_option($this->config->get_setup_option_name(), 0, false);
+			$this->redirect_with_notice('setup_invalid_hub');
+		}
+
+		update_option($this->config->get_setup_option_name(), 1, false);
+
+		if ($role === 'client') {
+			$result = $this->hub->maybe_register_current_site(true);
+
+			if (is_wp_error($result)) {
+				MWS_Logger::log('setup_register_failed', array('error' => $result->get_error_message()), 'warning');
+				$this->redirect_with_notice('setup_saved_register_failed');
+			}
+		}
+
+		$this->redirect_with_notice('setup_saved');
 	}
 
 	public function handle_save_sites() {
@@ -224,6 +303,23 @@ final class MWS_Admin {
 		exit;
 	}
 
+	public function handle_register_with_hub() {
+		if (! current_user_can('manage_options')) {
+			wp_die(esc_html__('You are not allowed to do that.', 'morgao-webring-signature'));
+		}
+
+		check_admin_referer('mws_register_with_hub');
+
+		$result = $this->hub->maybe_register_current_site(true);
+
+		if (is_wp_error($result)) {
+			MWS_Logger::log('manual_hub_register_failed', array('error' => $result->get_error_message()), 'warning');
+			$this->redirect_with_notice('hub_register_failed');
+		}
+
+		$this->redirect_with_notice('hub_registered');
+	}
+
 	public function render_page() {
 		$settings = $this->config->get_settings();
 		$snippet  = $this->renderer->render_signature();
@@ -237,7 +333,10 @@ final class MWS_Admin {
 		?>
 		<div class="wrap mws-admin">
 			<h1><?php echo esc_html($this->config->get('product_name')); ?></h1>
-			<p><?php esc_html_e('Generate a footer-ready HTML signature for Divi and keep your Morgao sites linked together.', 'morgao-webring-signature'); ?></p>
+			<p><?php esc_html_e('Generate a footer-ready HTML signature and connect your sites through one shared AutoRing.', 'morgao-webring-signature'); ?></p>
+
+			<?php $this->render_setup_card($settings); ?>
+
 			<form method="post" action="options.php" class="mws-admin__card">
 				<?php
 				settings_fields('mws_settings_group');
@@ -248,7 +347,7 @@ final class MWS_Admin {
 
 			<div class="mws-admin__card">
 				<h2><?php esc_html_e('Ring sites', 'morgao-webring-signature'); ?></h2>
-				<p><?php esc_html_e('Add, edit, and reorder the sites directly from WordPress admin. The first valid saved list becomes the active ring source.', 'morgao-webring-signature'); ?></p>
+				<p><?php esc_html_e('On the master site, this is the shared source of truth. Client sites read the master ring automatically and keep their own local list only as fallback.', 'morgao-webring-signature'); ?></p>
 				<form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
 					<input type="hidden" name="action" value="mws_save_sites">
 					<?php wp_nonce_field('mws_save_sites'); ?>
@@ -277,10 +376,27 @@ final class MWS_Admin {
 
 			<div class="mws-admin__card">
 				<h2><?php esc_html_e('Footer snippet', 'morgao-webring-signature'); ?></h2>
-				<p><?php esc_html_e('Paste this HTML into Divi > Theme Options > Edit Footer Credits.', 'morgao-webring-signature'); ?></p>
+				<p><?php esc_html_e('Paste this HTML into your theme footer, page builder, or custom credits area. It also works well in Divi footer credits.', 'morgao-webring-signature'); ?></p>
 				<div class="mws-admin__preview"><?php echo wp_kses_post($snippet); ?></div>
 				<textarea class="large-text code mws-admin__textarea" rows="8" readonly data-mws-copy-source="signature"><?php echo esc_textarea($snippet); ?></textarea>
 				<p><button type="button" class="button button-secondary" data-mws-copy-target="signature"><?php esc_html_e('Copy snippet', 'morgao-webring-signature'); ?></button></p>
+			</div>
+
+			<div class="mws-admin__card">
+				<h2><?php esc_html_e('AutoRing Connection', 'morgao-webring-signature'); ?></h2>
+				<?php if (! empty($settings['hub_mode_enabled'])) : ?>
+					<p><?php esc_html_e('This site is currently the master AutoRing site. Other sites can connect using the base URL below.', 'morgao-webring-signature'); ?></p>
+					<p><code><?php echo esc_html(untrailingslashit(home_url('/'))); ?></code></p>
+					<p class="description"><?php esc_html_e('Clients use this URL as the master site URL. Registration and JSON endpoints are derived automatically.', 'morgao-webring-signature'); ?></p>
+				<?php else : ?>
+					<p><?php esc_html_e('This site is currently connected as a client. Use the button below to retry registration with the master if needed.', 'morgao-webring-signature'); ?></p>
+					<p><code><?php echo esc_html($settings['hub_url']); ?></code></p>
+					<form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+						<input type="hidden" name="action" value="mws_register_with_hub">
+						<?php wp_nonce_field('mws_register_with_hub'); ?>
+						<?php submit_button(__('Register with master again', 'morgao-webring-signature'), 'secondary', 'submit', false); ?>
+					</form>
+				<?php endif; ?>
 			</div>
 
 			<div class="mws-admin__card">
@@ -354,6 +470,41 @@ final class MWS_Admin {
 		<?php
 	}
 
+	public function render_hub_role_field() {
+		$settings = $this->config->get_settings();
+		?>
+		<label>
+			<input type="checkbox" name="<?php echo esc_attr($this->config->get_option_name()); ?>[hub_mode_enabled]" value="1" <?php checked(! empty($settings['hub_mode_enabled'])); ?> />
+			<?php esc_html_e('This site is the master AutoRing site.', 'morgao-webring-signature'); ?>
+		</label>
+		<p class="description"><?php esc_html_e('If enabled, this site exposes the shared registry and can accept registrations from other sites.', 'morgao-webring-signature'); ?></p>
+		<label>
+			<input type="checkbox" name="<?php echo esc_attr($this->config->get_option_name()); ?>[hub_allow_registrations]" value="1" <?php checked(! empty($settings['hub_allow_registrations'])); ?> />
+			<?php esc_html_e('Allow other sites to register automatically.', 'morgao-webring-signature'); ?>
+		</label>
+		<label>
+			<input type="checkbox" name="<?php echo esc_attr($this->config->get_option_name()); ?>[hub_auto_register]" value="1" <?php checked(! empty($settings['hub_auto_register'])); ?> />
+			<?php esc_html_e('If this site is a client, auto-register with the master site.', 'morgao-webring-signature'); ?>
+		</label>
+		<?php
+	}
+
+	public function render_hub_url_field() {
+		$settings = $this->config->get_settings();
+		?>
+		<input type="url" class="regular-text code" name="<?php echo esc_attr($this->config->get_option_name()); ?>[hub_url]" value="<?php echo esc_attr($settings['hub_url']); ?>" placeholder="https://master-site.com" />
+		<p class="description"><?php esc_html_e('Client sites should point to the master site base URL. The plugin derives the registration and JSON endpoints automatically.', 'morgao-webring-signature'); ?></p>
+		<?php
+	}
+
+	public function render_hub_secret_field() {
+		$settings = $this->config->get_settings();
+		?>
+		<input type="text" class="regular-text code" name="<?php echo esc_attr($this->config->get_option_name()); ?>[hub_secret]" value="<?php echo esc_attr($settings['hub_secret']); ?>" />
+		<p class="description"><?php esc_html_e('Optional shared secret used to protect automatic registrations on the master site.', 'morgao-webring-signature'); ?></p>
+		<?php
+	}
+
 	public function render_remote_source_field() {
 		$settings = $this->config->get_settings();
 		?>
@@ -410,8 +561,13 @@ final class MWS_Admin {
 		}
 
 		$map = array(
+			'setup_saved' => array('success', __('AutoRing setup saved.', 'morgao-webring-signature')),
+			'setup_saved_register_failed' => array('warning', __('Setup was saved, but this site could not register with the master yet.', 'morgao-webring-signature')),
+			'setup_invalid_hub' => array('error', __('Setup was not completed because the master site URL is invalid.', 'morgao-webring-signature')),
 			'sites_saved'      => array('success', __('Ring sites saved.', 'morgao-webring-signature')),
 			'sites_save_failed'=> array('error', __('Sites could not be saved. Check IDs, names, and URLs.', 'morgao-webring-signature')),
+			'hub_registered' => array('success', __('This site has been registered with the master AutoRing site.', 'morgao-webring-signature')),
+			'hub_register_failed' => array('error', __('This site could not register with the master AutoRing site.', 'morgao-webring-signature')),
 			'status_refresh_success' => array('success', __('Site statuses refreshed.', 'morgao-webring-signature')),
 			'status_refresh_failed'  => array('error', __('Site statuses could not be refreshed.', 'morgao-webring-signature')),
 			'refresh_success' => array('success', __('Remote registry refreshed.', 'morgao-webring-signature')),
@@ -425,6 +581,59 @@ final class MWS_Admin {
 
 		list($type, $message) = $map[ $notice ];
 		printf('<div class="notice notice-%1$s"><p>%2$s</p></div>', esc_attr($type), esc_html($message));
+	}
+
+	private function render_setup_card($settings) {
+		$show_setup = ! get_option($this->config->get_setup_option_name(), false) || isset($_GET['mws_setup']);
+		$master_url = untrailingslashit(home_url('/'));
+		$register_endpoint = $this->hub->get_register_endpoint_url($master_url);
+		$sites_endpoint = $this->hub->get_sites_endpoint_url($master_url);
+
+		if (! $show_setup) {
+			return;
+		}
+		?>
+		<div class="mws-admin__card mws-admin__card--setup">
+			<h2><?php esc_html_e('Choose Your AutoRing Role', 'morgao-webring-signature'); ?></h2>
+			<p><?php esc_html_e('By default, the first site can act as the master. Other sites can connect to that master and register automatically.', 'morgao-webring-signature'); ?></p>
+			<div class="mws-admin__setup-grid">
+				<form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="mws-admin__setup-panel">
+					<input type="hidden" name="action" value="mws_complete_setup">
+					<input type="hidden" name="mws_role" value="master">
+					<?php wp_nonce_field('mws_complete_setup'); ?>
+					<h3><?php esc_html_e('Make This Site The Master', 'morgao-webring-signature'); ?></h3>
+					<p><?php esc_html_e('This site becomes the source of truth. Other sites can connect to it and join the shared ring.', 'morgao-webring-signature'); ?></p>
+					<p><strong><?php esc_html_e('Share this URL with other sites:', 'morgao-webring-signature'); ?></strong></p>
+					<code><?php echo esc_html($master_url); ?></code>
+					<p><strong><?php esc_html_e('Registration endpoint:', 'morgao-webring-signature'); ?></strong></p>
+					<code><?php echo esc_html($register_endpoint); ?></code>
+					<p><strong><?php esc_html_e('Directory JSON endpoint:', 'morgao-webring-signature'); ?></strong></p>
+					<code><?php echo esc_html($sites_endpoint); ?></code>
+					<p>
+						<label for="mws-master-secret"><?php esc_html_e('Optional shared secret', 'morgao-webring-signature'); ?></label><br />
+						<input id="mws-master-secret" type="text" class="regular-text code" name="hub_secret" value="<?php echo esc_attr($settings['hub_secret']); ?>" />
+					</p>
+					<?php submit_button(__('Use As Master Site', 'morgao-webring-signature')); ?>
+				</form>
+				<form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="mws-admin__setup-panel">
+					<input type="hidden" name="action" value="mws_complete_setup">
+					<input type="hidden" name="mws_role" value="client">
+					<?php wp_nonce_field('mws_complete_setup'); ?>
+					<h3><?php esc_html_e('Connect To An Existing Master', 'morgao-webring-signature'); ?></h3>
+					<p><?php esc_html_e('Enter the master site URL. This site will read the shared ring and attempt automatic registration.', 'morgao-webring-signature'); ?></p>
+					<p>
+						<label for="mws-client-hub-url"><?php esc_html_e('Master site URL', 'morgao-webring-signature'); ?></label><br />
+						<input id="mws-client-hub-url" type="url" class="regular-text code" name="hub_url" value="<?php echo esc_attr($settings['hub_url']); ?>" placeholder="https://master-site.com" />
+					</p>
+					<p>
+						<label for="mws-client-hub-secret"><?php esc_html_e('Shared secret if required', 'morgao-webring-signature'); ?></label><br />
+						<input id="mws-client-hub-secret" type="text" class="regular-text code" name="hub_secret" value="<?php echo esc_attr($settings['hub_secret']); ?>" />
+					</p>
+					<?php submit_button(__('Connect This Site', 'morgao-webring-signature')); ?>
+				</form>
+			</div>
+		</div>
+		<?php
 	}
 
 	private function render_site_row($index, array $site) {
