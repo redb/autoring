@@ -1,11 +1,16 @@
 # Changelog
 
+## 0.1.3
+
+- fix Divi footer credits so `[morgao_webring_signature]` is rendered instead of shown as plain text
+
 ## 0.1.2
 
 - add master-managed shared branding propagated to subscribed client sites
 - allow the master site to control the shared signature label
 - propagate master accent color and Give CTA settings to connected clients
 - keep `Morgao AutoRing` branding on the index page only, not in footer signatures
+- add explicit Divi footer credits shortcode compatibility
 
 ## 0.1.1
 

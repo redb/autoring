@@ -42,7 +42,8 @@ Minimal WordPress plugin to connect a family of sites through a shared footer si
 
 Divi note:
 
-- works well in `Divi > Theme Options > Edit Footer Credits`
+- works in `Divi > Theme Options > Edit Footer Credits`
+- both the copied HTML snippet and `[morgao_webring_signature]` are supported
 
 ## GitHub Install And Updates
 
