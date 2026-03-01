@@ -46,8 +46,9 @@ final class MWS_Hub {
 
 		return rest_ensure_response(
 			array(
-				'sites' => $sites,
-				'count' => count($sites),
+				'sites'  => $sites,
+				'count'  => count($sites),
+				'shared' => $this->get_shared_branding_payload(),
 			)
 		);
 	}
@@ -252,5 +253,11 @@ final class MWS_Hub {
 		}
 
 		return sanitize_key(str_replace('.', '-', $host));
+	}
+
+	private function get_shared_branding_payload() {
+		$settings = $this->config->get_settings();
+
+		return $this->validator->sanitize_shared_branding($settings, $this->config);
 	}
 }

@@ -13,6 +13,7 @@ final class MWS_Validator {
 		$remote_source   = ! empty($input['use_remote_source']);
 		$remote_url      = isset($input['remote_source_url']) ? trim((string) $input['remote_source_url']) : '';
 		$accent_color    = sanitize_hex_color($input['accent_color'] ?? $defaults['accent_color']);
+		$shared_signature_label = isset($input['shared_signature_label']) ? sanitize_text_field((string) $input['shared_signature_label']) : '';
 		$open_in_new_tab = ! empty($input['open_in_new_tab']);
 		$hub_mode_enabled = ! empty($input['hub_mode_enabled']);
 		$hub_allow_registrations = ! empty($input['hub_allow_registrations']);
@@ -112,6 +113,7 @@ final class MWS_Validator {
 			'use_remote_source' => $remote_source,
 			'remote_source_url' => $remote_url,
 			'accent_color'      => $accent_color,
+			'shared_signature_label' => $shared_signature_label,
 			'open_in_new_tab'   => $open_in_new_tab,
 			'hub_mode_enabled'  => $hub_mode_enabled,
 			'hub_allow_registrations' => $hub_allow_registrations,
@@ -124,6 +126,46 @@ final class MWS_Validator {
 			'give_url'          => $give_url,
 			'give_label'        => $give_label,
 			'show_give_button'  => $show_give_button,
+		);
+	}
+
+	public function sanitize_shared_branding($input, MWS_Config $config) {
+		$defaults = $config->get_default_settings();
+		$input    = is_array($input) ? $input : array();
+
+		$shared_signature_label = isset($input['shared_signature_label']) ? sanitize_text_field((string) $input['shared_signature_label']) : '';
+		$accent_color           = sanitize_hex_color($input['accent_color'] ?? $defaults['accent_color']);
+		$give_url               = isset($input['give_url']) ? trim((string) $input['give_url']) : '';
+		$give_label             = isset($input['give_label']) ? sanitize_text_field((string) $input['give_label']) : $defaults['give_label'];
+		$show_give_button       = ! empty($input['show_give_button']);
+
+		if ($accent_color === null || $accent_color === '') {
+			$accent_color = $defaults['accent_color'];
+		}
+
+		if ($give_url !== '') {
+			$give_url = esc_url_raw($give_url);
+			$parsed   = wp_parse_url($give_url);
+
+			if (! $parsed || empty($parsed['scheme']) || ! in_array($parsed['scheme'], array('http', 'https'), true)) {
+				$give_url = '';
+			}
+		}
+
+		if ($give_label === '') {
+			$give_label = $defaults['give_label'];
+		}
+
+		if ($show_give_button && $give_url === '') {
+			$show_give_button = false;
+		}
+
+		return array(
+			'shared_signature_label' => $shared_signature_label,
+			'accent_color'           => $accent_color,
+			'show_give_button'       => $show_give_button,
+			'give_url'               => $give_url,
+			'give_label'             => $give_label,
 		);
 	}
 

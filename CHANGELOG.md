@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+- add master-managed shared branding propagated to subscribed client sites
+- allow the master site to control the shared signature label
+- propagate master accent color and Give CTA settings to connected clients
+- keep `Morgao AutoRing` branding on the index page only, not in footer signatures
+
 ## 0.1.1
 
 - rename repository target to `redb/autoring`

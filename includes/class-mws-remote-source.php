@@ -7,13 +7,25 @@ if (! defined('ABSPATH')) {
 final class MWS_Remote_Source {
 	private $config;
 	private $validator;
+	private $last_payload;
 
 	public function __construct(MWS_Config $config, MWS_Validator $validator) {
 		$this->config    = $config;
 		$this->validator = $validator;
+		$this->last_payload = null;
 	}
 
 	public function get_sites($url, $force_refresh = false) {
+		$payload = $this->get_payload($url, $force_refresh);
+
+		if (is_wp_error($payload)) {
+			return $payload;
+		}
+
+		return $payload['sites'];
+	}
+
+	public function get_payload($url, $force_refresh = false) {
 		$url = trim((string) $url);
 
 		if ($url === '') {
@@ -24,6 +36,7 @@ final class MWS_Remote_Source {
 		$cached    = get_transient($cache_key);
 
 		if (! $force_refresh && is_array($cached) && ! empty($cached)) {
+			$this->last_payload = $cached;
 			return $cached;
 		}
 
@@ -34,8 +47,13 @@ final class MWS_Remote_Source {
 		}
 
 		set_transient($cache_key, $result, (int) $this->config->get('remote_cache_ttl'));
+		$this->last_payload = $result;
 
 		return $result;
+	}
+
+	public function get_last_payload() {
+		return is_array($this->last_payload) ? $this->last_payload : null;
 	}
 
 	private function request_with_retries($url) {
@@ -72,11 +90,7 @@ final class MWS_Remote_Source {
 
 			$decoded = json_decode($body, true);
 
-			if (isset($decoded['sites']) && is_array($decoded['sites'])) {
-				$decoded = $decoded['sites'];
-			}
-
-			$validated = $this->validator->validate_sites($decoded);
+			$validated = $this->normalize_payload($decoded);
 
 			if (is_wp_error($validated)) {
 				$last = $validated;
@@ -88,5 +102,29 @@ final class MWS_Remote_Source {
 		}
 
 		return $last instanceof WP_Error ? $last : new WP_Error('mws_remote_failed', __('Remote source could not be loaded.', 'morgao-webring-signature'));
+	}
+
+	private function normalize_payload($decoded) {
+		$sites  = $decoded;
+		$shared = array();
+
+		if (is_array($decoded) && isset($decoded['sites']) && is_array($decoded['sites'])) {
+			$sites = $decoded['sites'];
+
+			if (isset($decoded['shared']) && is_array($decoded['shared'])) {
+				$shared = $this->validator->sanitize_shared_branding($decoded['shared'], $this->config);
+			}
+		}
+
+		$validated_sites = $this->validator->validate_sites($sites);
+
+		if (is_wp_error($validated_sites)) {
+			return $validated_sites;
+		}
+
+		return array(
+			'sites'   => $validated_sites,
+			'shared'  => $shared,
+		);
 	}
 }

@@ -79,6 +79,14 @@ final class MWS_Admin {
 		);
 
 		add_settings_field(
+			'shared_signature_label',
+			__('Shared signature label', 'morgao-webring-signature'),
+			array($this, 'render_shared_signature_label_field'),
+			'morgao-webring-signature',
+			'mws_main_section'
+		);
+
+		add_settings_field(
 			'open_in_new_tab',
 			__('Open links in new tab', 'morgao-webring-signature'),
 			array($this, 'render_open_in_new_tab_field'),
@@ -456,7 +464,15 @@ final class MWS_Admin {
 		$settings = $this->config->get_settings();
 		?>
 		<input type="text" class="regular-text code" name="<?php echo esc_attr($this->config->get_option_name()); ?>[accent_color]" value="<?php echo esc_attr($settings['accent_color']); ?>" />
-		<p class="description"><?php esc_html_e('Hex color used by the frontend signature and the directory page.', 'morgao-webring-signature'); ?></p>
+		<p class="description"><?php esc_html_e('Hex color used by the frontend signature and the directory page. On client sites connected to a master, the master value wins.', 'morgao-webring-signature'); ?></p>
+		<?php
+	}
+
+	public function render_shared_signature_label_field() {
+		$settings = $this->config->get_settings();
+		?>
+		<input type="text" class="regular-text code" name="<?php echo esc_attr($this->config->get_option_name()); ?>[shared_signature_label]" value="<?php echo esc_attr($settings['shared_signature_label']); ?>" placeholder="<?php esc_attr_e('Hosted by Morgao', 'morgao-webring-signature'); ?>" />
+		<p class="description"><?php esc_html_e('Optional label shown in the shared footer signature. When this site is the master, this text propagates automatically to subscribed client sites.', 'morgao-webring-signature'); ?></p>
 		<?php
 	}
 
@@ -549,7 +565,7 @@ final class MWS_Admin {
 		<p>
 			<input type="text" class="regular-text code" name="<?php echo esc_attr($this->config->get_option_name()); ?>[give_label]" value="<?php echo esc_attr($settings['give_label']); ?>" placeholder="<?php echo esc_attr($this->config->get('give_default_label')); ?>" />
 		</p>
-		<p class="description"><?php esc_html_e('Optional monetization CTA. It is only displayed if a valid URL is configured.', 'morgao-webring-signature'); ?></p>
+		<p class="description"><?php esc_html_e('Optional monetization CTA. It is only displayed if a valid URL is configured. On subscribed client sites, the master value propagates automatically.', 'morgao-webring-signature'); ?></p>
 		<?php
 	}
 

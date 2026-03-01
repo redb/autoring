@@ -3,7 +3,7 @@
  * Plugin Name: Morgao AutoRing
  * Plugin URI: https://morgao.com
  * Description: Generates a footer-ready webring signature for Morgao sites, with local admin management, optional GitHub updates, and safe fallback rendering.
- * Version: 0.1.1
+ * Version: 0.1.2
  * Author: Morgao
  * Author URI: https://morgao.com
  * Requires at least: 6.0
@@ -16,7 +16,7 @@ if (! defined('ABSPATH')) {
 	exit;
 }
 
-define('MWS_PLUGIN_VERSION', '0.1.1');
+define('MWS_PLUGIN_VERSION', '0.1.2');
 define('MWS_PLUGIN_FILE', __FILE__);
 define('MWS_PLUGIN_BASENAME', plugin_basename(__FILE__));
 define('MWS_PLUGIN_DIR', plugin_dir_path(__FILE__));

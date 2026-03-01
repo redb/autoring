@@ -41,6 +41,7 @@ final class MWS_Config {
 			'use_remote_source'  => false,
 			'remote_source_url'  => '',
 			'accent_color'       => (string) $this->get('accent_color'),
+			'shared_signature_label' => '',
 			'open_in_new_tab'    => (bool) $this->get('open_in_new_tab'),
 			'hub_mode_enabled'   => false,
 			'hub_allow_registrations' => true,
@@ -107,5 +108,15 @@ final class MWS_Config {
 
 	public function get_hub_registration_cache_key($hub_url, $site_url) {
 		return (string) $this->get('hub_registration_key') . md5((string) $hub_url . '|' . (string) $site_url);
+	}
+
+	public function get_shared_branding_keys() {
+		return array(
+			'shared_signature_label',
+			'accent_color',
+			'show_give_button',
+			'give_url',
+			'give_label',
+		);
 	}
 }

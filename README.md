@@ -83,6 +83,12 @@ Client site needs:
 - the master site base URL
 - the shared secret only if the master requires one
 
+Shared branding from the master site can also propagate to subscribed clients, including:
+
+- the signature label shown in the shared footer signature
+- the accent color
+- the optional `Give` button
+
 ## Monetization
 
 The public directory can display a `Give` button.

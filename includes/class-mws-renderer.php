@@ -19,11 +19,14 @@ final class MWS_Renderer {
 		$context = $this->registry->get_context();
 
 		if (empty($context['current'])) {
-			return '<span class="mws-signature mws-signature--fallback">Morgao</span>';
+			$fallback_label = get_bloginfo('name');
+			$fallback_label = is_string($fallback_label) && $fallback_label !== '' ? $fallback_label : __('Webring', 'morgao-webring-signature');
+
+			return sprintf('<span class="mws-signature mws-signature--fallback">%s</span>', esc_html($fallback_label));
 		}
 
 		$settings = $context['settings'];
-		$brand    = $this->config->get('brand_label');
+		$label    = ! empty($settings['shared_signature_label']) ? $settings['shared_signature_label'] : $context['current']['name'];
 		$target   = ! empty($settings['open_in_new_tab']) ? ' target="_blank" rel="noopener noreferrer"' : '';
 		$home     = home_url('/');
 		$prev     = add_query_arg('mws-action', 'prev', $home);
@@ -32,8 +35,7 @@ final class MWS_Renderer {
 		$dir      = add_query_arg('mws-action', 'directory', $home);
 
 		$items = array(
-			sprintf('<span class="mws-signature__brand">%s</span>', esc_html($brand)),
-			sprintf('<span class="mws-signature__current">%s</span>', esc_html($context['current']['name'])),
+			sprintf('<span class="mws-signature__current">%s</span>', esc_html($label)),
 			sprintf('<a class="mws-signature__link" href="%s"%s>%s</a>', esc_url($prev), $target, esc_html__('Previous', 'morgao-webring-signature')),
 			sprintf('<a class="mws-signature__link" href="%s"%s>%s</a>', esc_url($dir), $target, esc_html__('Index', 'morgao-webring-signature')),
 			sprintf('<a class="mws-signature__link" href="%s"%s>%s</a>', esc_url($next), $target, esc_html__('Next', 'morgao-webring-signature')),
@@ -52,7 +54,7 @@ final class MWS_Renderer {
 		$items   = array();
 		$lang    = get_bloginfo('language');
 		$statuses = $this->site_status->get_status_map($context['sites']);
-		$settings = $this->config->get_settings();
+		$settings = $context['settings'];
 
 		foreach ($context['sites'] as $index => $site) {
 			$current_class = $index === $context['currentIndex'] ? ' mws-directory__item--current' : '';
@@ -88,7 +90,7 @@ final class MWS_Renderer {
 			$lang !== '' ? 'lang="' . esc_attr($lang) . '"' : '',
 			esc_attr(get_bloginfo('charset')),
 			esc_html($brand),
-			$this->get_directory_styles(),
+			$this->get_directory_styles($settings),
 			esc_html($brand),
 			esc_html__('Webring directory', 'morgao-webring-signature'),
 			esc_html__('Hand-picked sites connected by a shared signature.', 'morgao-webring-signature'),
@@ -101,8 +103,7 @@ final class MWS_Renderer {
 		);
 	}
 
-	private function get_directory_styles() {
-		$settings = $this->config->get_settings();
+	private function get_directory_styles(array $settings) {
 		$accent   = $settings['accent_color'] ?: $this->config->get('accent_color');
 
 		return sprintf(

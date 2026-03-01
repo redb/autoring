@@ -150,7 +150,7 @@ final class MWS_Plugin {
 	}
 
 	public function enqueue_frontend_assets() {
-		$settings = $this->config->get_settings();
+		$settings = $this->registry->get_effective_settings();
 
 		wp_enqueue_style('mws-signature', MWS_PLUGIN_URL . 'assets/css/mws-signature.css', array(), MWS_PLUGIN_VERSION);
 		wp_add_inline_style(
