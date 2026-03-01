@@ -90,7 +90,7 @@ final class MWS_GitHub_Updater {
 			$args['headers']['Accept'] = 'application/vnd.github+json';
 		}
 
-		$args['headers']['User-Agent'] = 'MorgaoWebringSignature/' . MWS_PLUGIN_VERSION;
+		$args['headers']['User-Agent'] = 'MorgaoAutoRing/' . MWS_PLUGIN_VERSION;
 		$args['timeout']               = (int) $this->config->get('github_request_timeout');
 
 		if ($token !== '') {

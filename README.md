@@ -53,7 +53,7 @@ Recommended flow:
 3. attach the generated asset `morgao-webring-signature.zip`
 4. install that ZIP in WordPress the first time
 5. enable `GitHub updates` in `Settings > Morgao AutoRing`
-6. keep or set the repository to `redb/Webring`
+6. keep or set the repository to `redb/autoring`
 
 Automatic GitHub updates require:
 

@@ -50,7 +50,7 @@ final class MWS_Remote_Source {
 					'redirection' => 2,
 					'headers'     => array(
 						'Accept'     => 'application/json',
-						'User-Agent' => 'MorgaoWebringSignature/' . MWS_PLUGIN_VERSION,
+						'User-Agent' => 'MorgaoAutoRing/' . MWS_PLUGIN_VERSION,
 					),
 				)
 			);

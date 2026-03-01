@@ -79,7 +79,7 @@ final class MWS_Site_Status {
 					'timeout'     => (int) $this->config->get('status_request_timeout'),
 					'redirection' => 2,
 					'headers'     => array(
-						'User-Agent' => 'MorgaoWebringSignature/' . MWS_PLUGIN_VERSION,
+						'User-Agent' => 'MorgaoAutoRing/' . MWS_PLUGIN_VERSION,
 					),
 				)
 			);

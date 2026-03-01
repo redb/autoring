@@ -48,7 +48,7 @@ final class MWS_Config {
 			'hub_secret'         => '',
 			'hub_auto_register'  => false,
 			'use_github_updates' => false,
-			'github_repository'  => 'redb/Webring',
+			'github_repository'  => 'redb/autoring',
 			'github_asset_name'  => MWS_PLUGIN_SLUG . '.zip',
 			'give_url'           => '',
 			'give_label'         => (string) $this->get('give_default_label'),

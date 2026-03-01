@@ -2,11 +2,11 @@
 
 ## First Release Checklist
 
-1. Confirm the GitHub repository is `https://github.com/redb/Webring` in `morgao-webring-signature.php`.
+1. Confirm the GitHub repository is `https://github.com/redb/autoring` in `morgao-webring-signature.php`.
 2. Confirm the plugin version in `morgao-webring-signature.php`.
 3. Update [CHANGELOG.md](CHANGELOG.md).
 4. Verify the default site seed in `config/default-sites.php`.
-5. Create a Git tag matching the plugin version, for example `v0.1.0`.
+5. Create a Git tag matching the plugin version, for example `v0.1.1`.
 6. Publish a GitHub Release from that tag.
 7. Let the GitHub Action attach `morgao-webring-signature.zip` to the release.
 8. Install that ZIP in WordPress or update from the previous release.
