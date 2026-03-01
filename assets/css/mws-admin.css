@@ -1,0 +1,56 @@
+.mws-admin {
+	max-width: 980px;
+}
+
+.mws-admin__card {
+	margin-top: 24px;
+	padding: 24px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 12px;
+}
+
+.mws-admin__preview {
+	padding: 16px;
+	border-radius: 12px;
+	background: linear-gradient(135deg, #151515, #2c211d);
+}
+
+.mws-admin__textarea {
+	margin-top: 16px;
+}
+
+.mws-admin__path {
+	padding: 12px;
+	background: #f6f7f7;
+	border-radius: 8px;
+	overflow-x: auto;
+}
+
+.mws-admin__sites {
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.mws-admin__sites-header,
+.mws-admin__site-row {
+	display: grid;
+	grid-template-columns: 1fr 1.2fr 2fr auto;
+	gap: 12px;
+	align-items: center;
+	padding: 12px;
+}
+
+.mws-admin__sites-header {
+	background: #f6f7f7;
+	font-weight: 600;
+}
+
+.mws-admin__site-row {
+	border-top: 1px solid #f0f0f1;
+}
+
+.mws-admin__site-row input {
+	width: 100%;
+}

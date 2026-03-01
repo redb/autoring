@@ -1,0 +1,38 @@
+.mws-signature {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.35rem;
+	font: 400 0.86rem/1.65 "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+	letter-spacing: 0.01em;
+	color: rgba(255, 255, 255, 0.72);
+}
+
+.mws-signature__brand {
+	color: inherit;
+	font-weight: 500;
+}
+
+.mws-signature__current {
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.mws-signature__link {
+	color: inherit;
+	text-decoration: none;
+	transition: color 0.2s ease;
+}
+
+.mws-signature__link:hover,
+.mws-signature__link:focus-visible {
+	color: var(--mws-accent, #d86f2d);
+	outline: none;
+}
+
+.mws-signature__divider {
+	color: rgba(255, 255, 255, 0.26);
+}
+
+.mws-signature--fallback {
+	color: rgba(255, 255, 255, 0.68);
+}
