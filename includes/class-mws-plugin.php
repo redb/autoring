@@ -150,7 +150,12 @@ final class MWS_Plugin {
 	}
 
 	public function enqueue_frontend_assets() {
-		$settings = $this->registry->get_effective_settings();
+		try {
+			$settings = $this->registry->get_effective_settings();
+		} catch (Throwable $exception) {
+			$this->log_runtime_exception('enqueue_frontend_assets', $exception);
+			$settings = $this->config->get_settings();
+		}
 
 		wp_enqueue_style('mws-signature', MWS_PLUGIN_URL . 'assets/css/mws-signature.css', array(), MWS_PLUGIN_VERSION);
 		wp_add_inline_style(
@@ -160,7 +165,13 @@ final class MWS_Plugin {
 	}
 
 	public function render_shortcode() {
-		return $this->renderer->render_signature();
+		try {
+			return $this->renderer->render_signature();
+		} catch (Throwable $exception) {
+			$this->log_runtime_exception('render_shortcode', $exception);
+
+			return $this->get_degraded_signature_markup();
+		}
 	}
 
 	public function handle_public_actions() {
@@ -169,17 +180,31 @@ final class MWS_Plugin {
 		}
 
 		$action  = sanitize_key(wp_unslash($_GET['mws-action']));
-		$context = $this->registry->get_context();
-
-		if (empty($context)) {
-			return;
-		}
 
 		if ($action === 'directory') {
 			status_header(200);
 			nocache_headers();
-			echo $this->renderer->render_directory_page();
+
+			try {
+				echo $this->renderer->render_directory_page();
+			} catch (Throwable $exception) {
+				$this->log_runtime_exception('render_directory_page', $exception);
+				echo $this->get_degraded_directory_markup();
+			}
+
 			exit;
+		}
+
+		try {
+			$context = $this->registry->get_context();
+		} catch (Throwable $exception) {
+			$this->log_runtime_exception('handle_public_actions', $exception);
+			wp_safe_redirect(home_url('/'));
+			exit;
+		}
+
+		if (empty($context)) {
+			return;
 		}
 
 		$target_map = array(
@@ -238,7 +263,12 @@ final class MWS_Plugin {
 	}
 
 	public function refresh_site_statuses() {
-		$sites = $this->registry->get_sites();
+		try {
+			$sites = $this->registry->get_sites();
+		} catch (Throwable $exception) {
+			$this->log_runtime_exception('refresh_site_statuses', $exception);
+			return;
+		}
 
 		if (empty($sites)) {
 			return;
@@ -253,5 +283,38 @@ final class MWS_Plugin {
 		if (! wp_next_scheduled($hook)) {
 			wp_schedule_event(time() + MINUTE_IN_SECONDS, $config->get('status_cron_interval'), $hook);
 		}
+	}
+
+	private function get_degraded_signature_markup() {
+		$label = get_bloginfo('name');
+		$label = is_string($label) && $label !== '' ? $label : __('Webring', 'morgao-webring-signature');
+
+		return sprintf('<span class="mws-signature mws-signature--fallback">%s</span>', esc_html($label));
+	}
+
+	private function get_degraded_directory_markup() {
+		$brand = $this->config->get('brand_label');
+		$home  = home_url('/');
+
+		return sprintf(
+			'<!DOCTYPE html><html><head><meta charset="%1$s"><meta name="viewport" content="width=device-width, initial-scale=1"><title>%2$s</title><style>body{margin:0;background:#111;color:#f6efe8;font-family:Georgia,serif}.mws-directory{max-width:720px;margin:0 auto;padding:64px 24px}a{color:inherit}</style></head><body><main class="mws-directory"><p>%2$s</p><h1>%3$s</h1><p>%4$s</p><p><a href="%5$s">%6$s</a></p></main></body></html>',
+			esc_attr(get_bloginfo('charset')),
+			esc_html($brand),
+			esc_html__('Directory temporarily unavailable', 'morgao-webring-signature'),
+			esc_html__('AutoRing is running in degraded mode while the live registry recovers.', 'morgao-webring-signature'),
+			esc_url($home),
+			esc_html__('Back to home', 'morgao-webring-signature')
+		);
+	}
+
+	private function log_runtime_exception($action, Throwable $exception) {
+		MWS_Logger::log(
+			'runtime_degraded_mode',
+			array(
+				'action'  => $action,
+				'message' => $exception->getMessage(),
+			),
+			'warning'
+		);
 	}
 }

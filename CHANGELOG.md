@@ -1,9 +1,16 @@
 # Changelog
 
+## 0.1.5
+
+- fix the GitHub plugin information modal in WordPress admin
+- enable GitHub update checks by default on new installations
+- add a safe admin mode so the Settings page still opens when the live registry fails
+- add a degraded runtime mode so shortcode, directory, and refresh tasks fail safely
+
 ## 0.1.4
 
 - fix backward compatibility with older cached hub payloads after the shared-branding format change
-- prevent invalid remote payloads from crashing shortcode rendering
+- prevent invalid remote payloads from crashing shortcode rendering and footer output
 
 ## 0.1.3
 

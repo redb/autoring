@@ -56,12 +56,17 @@ Recommended flow:
 5. enable `GitHub updates` in `Settings > Morgao AutoRing`
 6. keep or set the repository to `redb/autoring`
 
+On new installations, GitHub updates are enabled by default.
+
 Automatic GitHub updates require:
 
 - a published GitHub Release
 - a ZIP asset named `morgao-webring-signature.zip`
 - the plugin folder slug to stay `morgao-webring-signature`
 - a release tag/version greater than the installed version
+
+If the live registry is temporarily broken, the plugin falls back to a safe admin mode so the settings page stays accessible.
+If runtime rendering also fails, the signature and directory switch to degraded output instead of crashing the site.
 
 For private repositories, define `MWS_GITHUB_TOKEN` in `wp-config.php`.
 

@@ -64,7 +64,7 @@ final class MWS_GitHub_Updater {
 			'requires'      => $release->requires,
 			'requires_php'  => $release->requires_php,
 			'sections'      => array(
-				'description' => wp_kses_post__('Simple and minimal webring signature for Morgao sites.', 'morgao-webring-signature'),
+				'description' => wp_kses_post(__('Simple and minimal webring signature for Morgao sites.', 'morgao-webring-signature')),
 				'changelog'   => wp_kses_post(wpautop($release->body)),
 			),
 		);

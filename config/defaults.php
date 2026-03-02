@@ -35,5 +35,6 @@ return array(
 	'brand_label'             => 'Morgao AutoRing',
 	'accent_color'            => '#D86F2D',
 	'open_in_new_tab'         => false,
+	'use_github_updates'      => true,
 	'give_default_label'      => 'Give',
 );

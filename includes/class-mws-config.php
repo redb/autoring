@@ -48,7 +48,7 @@ final class MWS_Config {
 			'hub_url'            => '',
 			'hub_secret'         => '',
 			'hub_auto_register'  => false,
-			'use_github_updates' => false,
+			'use_github_updates' => (bool) $this->get('use_github_updates'),
 			'github_repository'  => 'redb/autoring',
 			'github_asset_name'  => MWS_PLUGIN_SLUG . '.zip',
 			'give_url'           => '',

@@ -35,6 +35,7 @@ final class MWS_Installer {
 			$settings['hub_allow_registrations'] = true;
 			$settings['hub_url']                 = untrailingslashit(home_url('/'));
 			$settings['hub_auto_register']       = false;
+			$settings['use_github_updates']      = true;
 		}
 
 		update_option($this->config->get_option_name(), $settings, false);

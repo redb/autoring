@@ -12,6 +12,7 @@ final class MWS_Admin {
 	private $rate_limiter;
 	private $site_status;
 	private $hub;
+	private $registry_fallback_notice;
 
 	public function __construct(MWS_Config $config, MWS_Validator $validator, MWS_Registry $registry, MWS_Renderer $renderer, MWS_Rate_Limiter $rate_limiter, MWS_Site_Status $site_status, MWS_Hub $hub) {
 		$this->config       = $config;
@@ -21,6 +22,7 @@ final class MWS_Admin {
 		$this->rate_limiter = $rate_limiter;
 		$this->site_status  = $site_status;
 		$this->hub          = $hub;
+		$this->registry_fallback_notice = '';
 	}
 
 	public function register() {
@@ -253,7 +255,12 @@ final class MWS_Admin {
 			$this->redirect_with_notice('rate_limited');
 		}
 
-		$sites = $this->registry->get_sites();
+		try {
+			$sites = $this->registry->get_sites();
+		} catch (Throwable $exception) {
+			$this->log_registry_exception('refresh_site_statuses', $exception);
+			$this->redirect_with_notice('status_refresh_failed');
+		}
 
 		if (empty($sites)) {
 			$this->redirect_with_notice('status_refresh_failed');
@@ -330,18 +337,15 @@ final class MWS_Admin {
 
 	public function render_page() {
 		$settings = $this->config->get_settings();
-		$snippet  = $this->renderer->render_signature();
-		$sites    = $this->registry->get_admin_sites();
-
-		if (is_wp_error($sites)) {
-			$sites = array();
-		}
+		$snippet  = $this->get_safe_signature_preview();
+		$sites    = $this->get_safe_admin_sites();
 
 		$this->render_notice();
 		?>
 		<div class="wrap mws-admin">
 			<h1><?php echo esc_html($this->config->get('product_name')); ?></h1>
 			<p><?php esc_html_e('Generate a footer-ready HTML signature and connect your sites through one shared AutoRing.', 'morgao-webring-signature'); ?></p>
+			<?php $this->render_registry_fallback_notice(); ?>
 
 			<?php $this->render_setup_card($settings); ?>
 
@@ -446,7 +450,7 @@ final class MWS_Admin {
 
 	public function render_current_site_field() {
 		$settings = $this->config->get_settings();
-		$sites    = $this->registry->get_sites();
+		$sites    = $this->get_safe_runtime_sites();
 		?>
 		<select name="<?php echo esc_attr($this->config->get_option_name()); ?>[current_site_id]">
 			<option value=""><?php esc_html_e('Auto-detect from current domain', 'morgao-webring-signature'); ?></option>
@@ -597,6 +601,66 @@ final class MWS_Admin {
 
 		list($type, $message) = $map[ $notice ];
 		printf('<div class="notice notice-%1$s"><p>%2$s</p></div>', esc_attr($type), esc_html($message));
+	}
+
+	private function render_registry_fallback_notice() {
+		if ($this->registry_fallback_notice === '') {
+			return;
+		}
+
+		printf('<div class="notice notice-warning"><p>%s</p></div>', esc_html($this->registry_fallback_notice));
+	}
+
+	private function get_safe_signature_preview() {
+		try {
+			return $this->renderer->render_signature();
+		} catch (Throwable $exception) {
+			$this->log_registry_exception('render_signature_preview', $exception);
+
+			return sprintf(
+				'<span class="mws-signature mws-signature--fallback">%s</span>',
+				esc_html(get_bloginfo('name') ?: __('Webring', 'morgao-webring-signature'))
+			);
+		}
+	}
+
+	private function get_safe_admin_sites() {
+		try {
+			$sites = $this->registry->get_admin_sites();
+
+			return is_wp_error($sites) ? array() : $sites;
+		} catch (Throwable $exception) {
+			$this->log_registry_exception('render_admin_sites', $exception);
+
+			return array();
+		}
+	}
+
+	private function get_safe_runtime_sites() {
+		try {
+			$sites = $this->registry->get_sites();
+
+			return is_array($sites) ? $sites : array();
+		} catch (Throwable $exception) {
+			$this->log_registry_exception('render_runtime_sites', $exception);
+
+			return $this->get_safe_admin_sites();
+		}
+	}
+
+	private function log_registry_exception($action, Throwable $exception) {
+		MWS_Logger::log(
+			'admin_registry_fallback',
+			array(
+				'action'  => $action,
+				'message' => $exception->getMessage(),
+			),
+			'warning'
+		);
+
+		if ($this->registry_fallback_notice === '') {
+			$this->registry_fallback_notice = __('AutoRing switched to safe admin mode because the live registry could not be loaded. You can still update settings and recover the connection.', 'morgao-webring-signature');
+		}
 	}
 
 	private function render_setup_card($settings) {
