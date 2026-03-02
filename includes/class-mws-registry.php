@@ -35,19 +35,16 @@ final class MWS_Registry {
 		if (empty($settings['hub_mode_enabled']) && ! empty($settings['hub_url'])) {
 			$hub_payload = $this->remote_source->get_payload($this->hub->get_sites_endpoint_url($settings['hub_url']), $force_refresh);
 
-			if (! is_wp_error($hub_payload)) {
+			if (! is_wp_error($hub_payload) && is_array($hub_payload) && isset($hub_payload['sites']) && is_array($hub_payload['sites'])) {
 				$this->shared_branding = is_array($hub_payload['shared'] ?? null) ? $hub_payload['shared'] : array();
 				return $hub_payload['sites'];
 			}
 
-			MWS_Logger::log(
-				'hub_source_fallback',
-				array(
-					'error' => $hub_payload->get_error_message(),
-					'url'   => $settings['hub_url'],
-				),
-				'warning'
-			);
+			$error_message = is_wp_error($hub_payload)
+				? $hub_payload->get_error_message()
+				: __('Hub payload is missing the sites registry.', 'morgao-webring-signature');
+
+			MWS_Logger::log('hub_source_fallback', array('error' => $error_message, 'url' => $settings['hub_url']), 'warning');
 		}
 
 		$admin_sites = $this->get_admin_sites();
@@ -92,6 +89,11 @@ final class MWS_Registry {
 
 	public function get_context() {
 		$sites           = $this->get_sites();
+
+		if (! is_array($sites)) {
+			$sites = array();
+		}
+
 		$settings        = $this->get_effective_settings();
 		$current_site_id = (string) ($settings['current_site_id'] ?? '');
 		$current_index   = $this->find_current_site_index($sites, $current_site_id);

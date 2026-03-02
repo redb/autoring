@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4
+
+- fix backward compatibility with older cached hub payloads after the shared-branding format change
+- prevent invalid remote payloads from crashing shortcode rendering
+
 ## 0.1.3
 
 - fix Divi footer credits so `[morgao_webring_signature]` is rendered instead of shown as plain text

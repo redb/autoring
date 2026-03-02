@@ -36,8 +36,19 @@ final class MWS_Remote_Source {
 		$cached    = get_transient($cache_key);
 
 		if (! $force_refresh && is_array($cached) && ! empty($cached)) {
-			$this->last_payload = $cached;
-			return $cached;
+			$normalized_cached = $this->normalize_payload($cached);
+
+			if (! is_wp_error($normalized_cached)) {
+				if ($normalized_cached !== $cached) {
+					set_transient($cache_key, $normalized_cached, (int) $this->config->get('remote_cache_ttl'));
+				}
+
+				$this->last_payload = $normalized_cached;
+
+				return $normalized_cached;
+			}
+
+			delete_transient($cache_key);
 		}
 
 		$result = $this->request_with_retries($url);
